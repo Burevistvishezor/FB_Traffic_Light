@@ -1,1 +1,72 @@
+FUNCTION_BLOCK "FB_Traffic_Light"
 
+VAR_INPUT
+    i_Enable         : Bool := TRUE;   // Разрешение работы
+    i_Green_Time     : Time := T#10S;
+    i_Yellow_Time    : Time := T#3S;
+    i_Red_Time       : Time := T#10S;
+    i_YR_Time        : Time := T#3S;   // Жёлтый + Красный
+END_VAR
+
+VAR_OUTPUT
+    o_Green          : Bool;
+    o_Yellow         : Bool;
+    o_Red            : Bool;
+END_VAR
+
+VAR
+    State            : Int;   // 0=Green, 1=Yellow, 2=Red, 3=YR
+    T_Green          : TON;
+    T_Yellow         : TON;
+    T_Red            : TON;
+    T_YR             : TON;
+END_VAR
+
+IF NOT i_Enable THEN
+    o_Green  := FALSE;
+    o_Yellow := FALSE;
+    o_Red    := FALSE;
+    State    := 0;
+    RETURN;
+END_IF;
+
+CASE State OF
+    0:  // Зелёный
+        o_Green  := TRUE;
+        o_Yellow := FALSE;
+        o_Red    := FALSE;
+        T_Green(IN := TRUE, PT := i_Green_Time);
+        T_Yellow(IN := FALSE);
+        T_Red(IN := FALSE);
+        T_YR(IN := FALSE);
+        IF T_Green.Q THEN State := 1; END_IF;
+
+    1:  // Жёлтый
+        o_Green  := FALSE;
+        o_Yellow := TRUE;
+        o_Red    := FALSE;
+        T_Yellow(IN := TRUE, PT := i_Yellow_Time);
+        T_Green(IN := FALSE);
+        IF T_Yellow.Q THEN State := 2; END_IF;
+
+    2:  // Красный
+        o_Green  := FALSE;
+        o_Yellow := FALSE;
+        o_Red    := TRUE;
+        T_Red(IN := TRUE, PT := i_Red_Time);
+        T_Yellow(IN := FALSE);
+        IF T_Red.Q THEN State := 3; END_IF;
+
+    3:  // Жёлтый + Красный
+        o_Green  := FALSE;
+        o_Yellow := TRUE;
+        o_Red    := TRUE;
+        T_YR(IN := TRUE, PT := i_YR_Time);
+        T_Red(IN := FALSE);
+        IF T_YR.Q THEN State := 0; END_IF;
+
+ELSE
+    State := 0;
+END_CASE;
+
+END_FUNCTION_BLOCK
